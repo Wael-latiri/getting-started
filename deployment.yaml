@@ -1,0 +1,87 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: getting-started-pv-claim
+  labels:
+    app: getting-started
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: getting-started
+  labels:
+    app: getting-started
+spec:
+  ports:
+    - port: 80
+      targetPort: 80
+  selector:
+    app: getting-started
+  type: ClusterIP
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: getting-started
+  labels:
+    app: getting-started
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: getting-started
+  template:
+    metadata:
+      labels:
+        app: getting-started
+    spec:
+      containers:
+        - image: waellatiri1993/getting-started:latest
+          name: getting-started
+          resources:
+            requests:
+              memory: "100Mi"
+              cpu: "100m"
+            limits:
+              memory: "100Mi"
+              cpu: "100m"
+          ports:
+            - containerPort: 80
+              name: http
+          volumeMounts:
+            - name: getting-started-persistent-storage
+              mountPath: /data
+      volumes:
+        - name: getting-started-persistent-storage
+          persistentVolumeClaim:
+            claimName: getting-started-pv-claim
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  annotations:
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+  name: getting-started
+spec:
+  ingressClassName: nginx
+  rules:
+    - host: waellatiri-nginx.horizon-workspaces.com
+      http:
+        paths:
+          - backend:
+              service:
+                name: getting-started
+                port:
+                  number: 80
+            path: /
+            pathType: ImplementationSpecific
+  tls:
+    - hosts:
+        - waellatiri-nginx.horizon-workspaces.com
+      secretName: getting-started-tls
